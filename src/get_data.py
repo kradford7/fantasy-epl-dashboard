@@ -1,46 +1,78 @@
 import pandas as pd
-import requests
 
-# Define API endpoints
+from requests import get
+from time import sleep
+
+# Global constants
 __url = 'https://fantasy.premierleague.com/api/'
 ENDPOINTS = {
     'general': f'{__url}bootstrap-static/',
+    'fixtures': f'{__url}fixtures/',
     'player': lambda player_id: f'{__url}element-summary/{player_id}/'
 }
 
 
 # Functions
-def get_players() -> pd.DataFrame:
-    """Returns player data collected from API in a DataFrame."""
-    dat = requests.get(ENDPOINTS['general']).json()
-    df = pd.DataFrame(dat['elements']).set_index('id')
+def get_data() -> dict:
+    """Returns player data collected from API."""
+    r = get(ENDPOINTS['general']).json()
 
-    # Only keep certain columns
-    df = df[['chance_of_playing_next_round', 'chance_of_playing_this_round',
-        'element_type', 'first_name', 'now_cost', 'second_name', 'status',
-        'team', 'web_name'
-    ]]
+    dat = {
+        'teams': pd.DataFrame(r['teams'])[[
+                'id', 'name', 'short_name', 'strength'
+            ]].set_index('id'),
+        'positions': pd.DataFrame(r['element_types'])[[
+                'id', 'singular_name', 'singular_name_short'
+            ]].set_index('id').rename(columns={
+                'singular_name': 'name', 'singular_name_short': 'short_name'
+            }),
+        'players': pd.DataFrame(r['elements'])[[
+                'chance_of_playing_next_round', 'chance_of_playing_this_round',
+                'element_type', 'first_name', 'id', 'second_name', 'status',
+                'team', 'web_name'
+            ]].set_index('id').rename(columns={
+                'element_type': 'position', 'web_name': 'name'
+            }),
+        'fixtures': pd.DataFrame(get(ENDPOINTS['fixtures']).json())[[
+                'finished', 'id', 'kickoff_time', 'team_a', 'team_a_score',
+                'team_h', 'team_h_score'
+        ]],
+        'players-hist': pd.DataFrame()
+    }
 
     # Drop unavailable players
-    df = df[df['status'] != 'u']
+    dat['players'] = dat['players'][dat['players']['status'] != 'u']
 
-    # Rename element_type to position for clarity
-    df.rename(columns={'element_type': 'position'}, inplace=True)
+    # Drop unplayed fixtures and finished column
+    dat['fixtures'] = dat['fixtures'].loc[
+        dat['fixtures']['finished'],
+        dat['fixtures'].columns.drop('finished')
+    ]
 
-    # Change position and team IDs to relevant names
-    df.loc[:, ['position']] = df['position'].map(
-        pd.DataFrame(dat['element_types']).set_index('id')['singular_name'])
-    df.loc[:, ['team']] = df['team'].map(
-        pd.DataFrame(dat['teams']).set_index('id')['short_name'])
+    # Convert datetime object
+    dat['fixtures']['kickoff_time'] = pd.to_datetime(
+        dat['fixtures']['kickoff_time']
+    )
 
-    return df
+    # Collect historical player data
+    for id in dat['players'].index:
+        sleep(0.1)
+
+        dat['players-hist'] = pd.concat(
+            objs=[
+                dat['players-hist'],
+                pd.DataFrame(get(ENDPOINTS['player'](id)).json()['history'])[[
+                    'element', 'total_points', 'round', 'minutes',
+                    'goals_scored', 'assists', 'clean_sheets',
+                    'goals_conceded', 'own_goals', 'penalties_saved',
+                    'penalties_missed', 'yellow_cards', 'red_cards', 'saves',
+                    'bonus', 'bps', 'value', 'selected'
+                ]].rename(columns={'element': 'player_id'})
+            ],
+            ignore_index=True
+        )
+
+    return dat
 
 
-def get_player_history(id: int) -> pd.DataFrame:
-    """Returns player data for past games in a DataFrame."""
-    dat = requests.get(ENDPOINTS['player'])
-
-
-# Save data to CSV if script is run
-if __name__ == '__main__':
-    get_players().to_csv('data.csv')
+if __name__ == '__main__': pass
