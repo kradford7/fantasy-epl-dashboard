@@ -1,7 +1,7 @@
-import pandas as pd
-
 from requests import get
 from time import sleep
+
+import pandas as pd
 
 # Global constants
 __url = 'https://fantasy.premierleague.com/api/'
@@ -13,8 +13,9 @@ ENDPOINTS = {
 
 
 # Functions
-def get_data() -> dict:
+def get_data(run_quick=False) -> dict:
     """Returns player data collected from API."""
+    print('Oh boy, here I go!')
     r = get(ENDPOINTS['general']).json()
 
     dat = {
@@ -55,22 +56,21 @@ def get_data() -> dict:
     )
 
     # Collect historical player data
-    for id in dat['players'].index:
-        sleep(0.1)
-
-        dat['players-hist'] = pd.concat(
-            objs=[
-                dat['players-hist'],
-                pd.DataFrame(get(ENDPOINTS['player'](id)).json()['history'])[[
-                    'element', 'total_points', 'round', 'minutes',
-                    'goals_scored', 'assists', 'clean_sheets',
-                    'goals_conceded', 'own_goals', 'penalties_saved',
-                    'penalties_missed', 'yellow_cards', 'red_cards', 'saves',
-                    'bonus', 'bps', 'value', 'selected'
-                ]].rename(columns={'element': 'player_id'})
-            ],
-            ignore_index=True
-        )
+    # for id in ([318, 427, 104, 80, 335] if run_quick else dat['players'].index):
+    #     sleep(0.1)
+    #     dat['players-hist'] = pd.concat(
+    #         objs=[
+    #             dat['players-hist'],
+    #             pd.DataFrame(get(ENDPOINTS['player'](id)).json()['history'])[[
+    #                 'element', 'total_points', 'round', 'minutes',
+    #                 'goals_scored', 'assists', 'clean_sheets',
+    #                 'goals_conceded', 'own_goals', 'penalties_saved',
+    #                 'penalties_missed', 'yellow_cards', 'red_cards', 'saves',
+    #                 'bonus', 'bps', 'value', 'selected'
+    #             ]].rename(columns={'element': 'player_id'})
+    #         ],
+    #         ignore_index=True
+    #     )
 
     return dat
 
