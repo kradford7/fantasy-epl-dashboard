@@ -1,15 +1,15 @@
+from datetime import datetime as dt
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
-from requests import get
+from dash.exceptions import PreventUpdate
 
 import altair as alt
 import dash_bootstrap_components as dbc
-import pandas as pd
 
-from get_data import ENDPOINTS, get_data
+from get_data import get_data
 
-
-dat = get_data()
+# Declare constants
+TODAY = dt.now().date()
 
 # Declare dash app
 app = Dash(
@@ -27,87 +27,38 @@ server = app.server
 # alt.data_transformers.disable_max_rows()
 
 # Dashboard Layout
-app.layout = dbc.Container(
-    id='body',
-    children=[
-        dcc.Location(id='url'),
-        dcc.Interval(
-            id='get-players',
-            interval=100,
-            n_intervals=0,
-            max_intervals=len(dat['players'].index)-1
-            ),
-        dbc.Progress(
-            id='progress-bar',
-            value=0
-            ),
-        html.Iframe(
-            id='scatter',
-            style={'border-width': '0', 'width': '100%', 'height': '400px'}
-            )
-    ],
-    fluid=True
-)
+app.layout = html.Div(children=[
+    dcc.Loading(
+        id='main',  
+        fullscreen=True),
+    dcc.Store(
+        id='local-data',
+        storage_type='local'),
+    dcc.Store(
+        id='data-loaded',
+        data=False)
+])
+
 
 # Callback functions
 @app.callback(
-    Output('progress-bar', 'value'),
-    Output('progress-bar', 'label'),
-    Input('get-players', 'n_intervals'),
-    State('get-players', 'max_intervals')
+    Output('main', 'children'),
+    Output('data-loaded', 'data'),
+    Output('local-data', 'data'),
+    Input('data-loaded', 'data'),
+    State('local-data', 'modified_timestamp'),
+    State('local-data', 'data')
 )
-def load_data(n, N):
-    id = dat['players'].index[n]
-    dat['players-hist'] = pd.concat(
-        objs=[
-            dat['players-hist'],
-            pd.DataFrame(get(ENDPOINTS['player'](id)).json()['history'])[[
-                'element', 'total_points', 'round', 'minutes',
-                'goals_scored', 'assists', 'clean_sheets',
-                'goals_conceded', 'own_goals', 'penalties_saved',
-                'penalties_missed', 'yellow_cards', 'red_cards', 'saves',
-                'bonus', 'bps', 'value', 'selected'
-            ]].rename(columns={'element': 'player_id'})
-        ],
-        ignore_index=True
-    )
+def load_data(data_loaded, tstamp, local_data):
+    if data_loaded: raise PreventUpdate
 
-    progress = round(n / N * 100)
-    msg = f'{n} of {N} players loaded...' if n < N else 'All players loaded!'
+    if dt.fromtimestamp(max(0, tstamp // 1000)).date() != TODAY:
+        local_data = get_data()
+    
+    child = local_data['teams']['1']['name']
 
-    return progress, msg
+    return child, True, local_data
 
-
-@app.callback(
-    Output('scatter', 'srcDoc'),
-    Input('get-players', 'n_intervals'),
-    State('get-players', 'max_intervals')
-)
-def plot_altair(n, N):
-    if n >= N:
-        df = pd.merge(
-            left=dat['players-hist'][[
-                    'player_id', 'total_points'
-                ]].groupby(
-                    'player_id', sort=False
-                ).agg(
-                    ['mean', 'var']
-                ).dropna(
-                ).droplevel(
-                    0, axis=1
-                ),
-            right=dat['players']['name'],
-            left_index=True,
-            right_index=True
-        )
-
-        return alt.Chart(df).mark_point().encode(
-            x='mean:Q',
-            y='var:Q',
-            tooltip=['name:N', 'mean:Q', 'var:Q']
-        ).interactive().to_html()
-    else:
-        return None
 
 # Run app
 if __name__ == '__main__': app.run_server(debug=True)
