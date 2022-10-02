@@ -1,5 +1,9 @@
+from datetime import datetime as dt
+from os import path
 from requests import get
 from time import sleep
+
+import pickle
 
 
 __URL = 'https://fantasy.premierleague.com/api/'
@@ -8,13 +12,23 @@ ENDPOINTS = {
     'fixtures': f'{__URL}fixtures/',
     'player': lambda player_id: f'{__URL}element-summary/{player_id}/'
 }
+DATA_PATH = './data.pkl'
+TODAY = dt.now().date()
 
 
 def get_data() -> dict:
     """Returns player data collected from API."""
-    r = get(ENDPOINTS['general']).json()
-
+    # Check if up to date data exists locally before making API call
+    if (
+        path.isfile(DATA_PATH)
+        and dt.fromtimestamp(path.getctime(DATA_PATH)).date() == TODAY
+    ):
+        with open(DATA_PATH, 'rb') as f:
+            dat = pickle.load(f)
+        return dat
+    
     # Construct data object (keys cast as strings for Dash compatability)
+    r = get(ENDPOINTS['general']).json()
     dat = {
         'teams': {
             str(team['id']): {
@@ -74,14 +88,18 @@ def get_data() -> dict:
     # Collect player match data
     for id, player in dat['players'].items():
         sleep(0.1)
-        # player['matches'] = {
-        #     match['round']: {
-        #         k: v for k, v in match.items() if k in [
-        #             'total_points', 'minutes', 'goals_scored', 'assists',
-        #             'clean_sheets', 'goals_conceded', 'own_goals',
-        #             'penalties_saved', 'penalties_missed', 'yellow_cards',
-        #             'red_cards', 'saves', 'bonus', 'bps', 'value', 'selected']}
-        #     for match in get(ENDPOINTS['player'](id)).json()['history']}
+        player['matches'] = {
+            match['round']: {
+                k: v for k, v in match.items() if k in [
+                    'total_points', 'minutes', 'goals_scored', 'assists',
+                    'clean_sheets', 'goals_conceded', 'own_goals',
+                    'penalties_saved', 'penalties_missed', 'yellow_cards',
+                    'red_cards', 'saves', 'bonus', 'bps', 'value', 'selected']}
+            for match in get(ENDPOINTS['player'](id)).json()['history']}
+
+    # Save data locally to save time on future calls
+    with open(DATA_PATH, 'wb') as f:
+        pickle.dump(dat, f)
 
     return dat
 

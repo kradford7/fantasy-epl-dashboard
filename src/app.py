@@ -5,6 +5,8 @@ from dash.exceptions import PreventUpdate
 
 import altair as alt
 import dash_bootstrap_components as dbc
+import numpy as np
+import pandas as pd
 
 from get_data import get_data
 
@@ -27,9 +29,9 @@ server = app.server
 # alt.data_transformers.disable_max_rows()
 
 # Dashboard Layout
-app.layout = html.Div(children=[
+app.layout = html.Div([
     dcc.Loading(
-        id='main',  
+        children=html.Div(id='main'),  
         fullscreen=True),
     dcc.Store(
         id='local-data',
@@ -49,15 +51,25 @@ app.layout = html.Div(children=[
     State('local-data', 'modified_timestamp'),
     State('local-data', 'data')
 )
-def load_data(data_loaded, tstamp, local_data):
+def load_data(data_loaded, t, dat):
     if data_loaded: raise PreventUpdate
+    if dt.fromtimestamp(max(0, t // 1000)).date() != TODAY: dat = get_data()
 
-    if dt.fromtimestamp(max(0, tstamp // 1000)).date() != TODAY:
-        local_data = get_data()
-    
-    child = local_data['teams']['1']['name']
+    df = pd.DataFrame(columns=['name', 'points', 'inconsistency'])
+    for player in dat['players'].values():
+        pts = [match['total_points'] for match in player['matches'].values()]
+        df.loc[len(df)] = [player['name'], np.sum(pts), np.var(pts)]
+    child = html.Iframe(
+        id='chart',
+        style={'border-width': '0', 'width': '100%', 'height': '400px'},
+        srcDoc=alt.Chart(df).mark_point().encode(
+            x='points:Q',
+            y='inconsistency:Q',
+            tooltip=['name:N']
+        ).interactive().to_html()
+    )
 
-    return child, True, local_data
+    return child, True, dat
 
 
 # Run app
