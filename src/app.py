@@ -10,6 +10,8 @@ import pandas as pd
 
 from get_data import get_data
 
+import visualisations as vis
+
 # Declare constants
 TODAY = dt.now().date()
 
@@ -17,7 +19,8 @@ TODAY = dt.now().date()
 app = Dash(
     name=__name__,
     title='Fantasy EPL Dashboard',
-    external_stylesheets=[dbc.themes.BOOTSTRAP]
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True
 )
 
 # app.config.suppress_callback_exceptions = True
@@ -31,7 +34,11 @@ server = app.server
 # Dashboard Layout
 app.layout = html.Div([
     dcc.Loading(
-        children=html.Div(id='main'),  
+        children=html.Div(
+            id='main',
+            children=[
+                dcc.Dropdown()
+            ]),  
         fullscreen=True),
     dcc.Store(
         id='local-data',
@@ -55,21 +62,46 @@ def load_data(data_loaded, t, dat):
     if data_loaded: raise PreventUpdate
     if dt.fromtimestamp(max(0, t // 1000)).date() != TODAY: dat = get_data()
 
-    df = pd.DataFrame(columns=['name', 'points', 'inconsistency'])
-    for player in dat['players'].values():
-        pts = [match['total_points'] for match in player['matches'].values()]
-        df.loc[len(df)] = [player['name'], np.sum(pts), np.var(pts)]
-    child = html.Iframe(
-        id='chart',
-        style={'border-width': '0', 'width': '100%', 'height': '400px'},
-        srcDoc=alt.Chart(df).mark_point().encode(
-            x='points:Q',
-            y='inconsistency:Q',
-            tooltip=['name:N']
-        ).interactive().to_html()
-    )
+    children = [
+        html.Iframe(
+            id='chart',
+            style={'border-width': '0', 'width': '100%', 'height': '400px'}
+        ),
+        dbc.Select(
+            id='stat-select',
+            value='total_points',
+            options=[
+                {
+                    'label': ' '.join(s.capitalize() for s in stat.split('_')),
+                    'value': stat
+                }
+                for stat in list(list(
+                    dat['players'].values())[0]['matches'].values())[0]
+            ]
+        ),
+        dbc.Switch(
+            id='inv-norm',
+            label="""Normalize chart such that most prolific and consistent is
+                located at (0, 0).""",
+            value=False
+        )
+    ]
 
-    return child, True, dat
+    return children, True, dat
+
+
+@app.callback(
+    Output('chart', 'srcDoc'),
+    Input('stat-select', 'value'),
+    Input('inv-norm', 'value'),
+    State('local-data', 'data')
+)
+def update_chart(stat, inv_norm, dat):
+    return vis.var_vs_sum(
+        dat=dat['players'],
+        stat=stat,
+        inv_norm=inv_norm
+    ).interactive().to_html()
 
 
 # Run app
