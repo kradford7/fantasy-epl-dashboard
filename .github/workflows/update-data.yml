@@ -1,0 +1,35 @@
+# This runs ~/src/get_data.py daily
+
+name: Update data
+
+on:
+  schedule:
+  - cron: '0 0 */1 * *' # runs daily at midnight (UTC)
+  workflow_dispatch:
+
+jobs:
+  update_data:
+    name: Update data file
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+        
+    - name: Install Dependencies
+      run: pip install pickle requests time
+      
+    - name: Run script
+      run: python ./src/get_data.py
+      
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "kradford7@users.noreply.github.com"
+        git config --local user.name "kradford7"
+        git commit -am "Automated data update"
+        git push
