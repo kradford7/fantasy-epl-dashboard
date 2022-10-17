@@ -73,17 +73,17 @@ for player in dat['players'].values():
         player[new] = player.pop(old)
 
 # Collect player match data
-print('collecting players...')
-for id, player in dat['players'].items():
-    sleep(0.1)
-    player['matches'] = {
-        match['round']: {
-            k: v for k, v in match.items() if k in [
-                'total_points', 'minutes', 'goals_scored', 'assists',
-                'clean_sheets', 'goals_conceded', 'own_goals',
-                'penalties_saved', 'penalties_missed', 'yellow_cards',
-                'red_cards', 'saves', 'bonus', 'bps', 'value', 'selected']}
-        for match in get(ENDPOINTS['player'](id)).json()['history']}
+# print('collecting players...')
+# for id, player in dat['players'].items():
+#     sleep(0.1)
+#     player['matches'] = {
+#         match['round']: {
+#             k: v for k, v in match.items() if k in [
+#                 'total_points', 'minutes', 'goals_scored', 'assists',
+#                 'clean_sheets', 'goals_conceded', 'own_goals',
+#                 'penalties_saved', 'penalties_missed', 'yellow_cards',
+#                 'red_cards', 'saves', 'bonus', 'bps', 'value', 'selected']}
+#         for match in get(ENDPOINTS['player'](id)).json()['history']}
 
 # Save data
 with open(DATA_PATH, 'wb') as f: pickle.dump(dat, f)
