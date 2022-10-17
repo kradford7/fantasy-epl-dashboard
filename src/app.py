@@ -1,4 +1,3 @@
-from datetime import datetime as dt
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -7,13 +6,18 @@ import altair as alt
 import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
+import pickle
 
-# from get_data import get_data
+import visualisations as vis
 
-# import visualisations as vis
 
-# Declare constants
-TODAY = dt.now().date()
+# Load data
+try:
+    with open('./data.pkl', 'rb') as f: dat = pickle.load(f)
+except:
+    data_loaded = False
+else:
+    data_loaded = True
 
 # Declare dash app
 app = Dash(
@@ -32,85 +36,48 @@ server = app.server
 # alt.data_transformers.disable_max_rows()
 
 # Dashboard Layout
-app.layout = html.Div([
-    html.Div(
-        id='main'),
-    dcc.Loading(
-        id='data-loading',
-        fullscreen=True,
-        children=[
-            dcc.Store(
-                id='local-data',
-                storage_type='local'
-            ),
-            dcc.Store(
-                id='data-loaded',
-                data=False
-            )
-        ]
-    )
-    # dcc.Store(
-    #     id='local-data',
-    #     storage_type='local'),
-    # dcc.Store(
-    #     id='data-loaded',
-    #     data=False)
-])
+app.layout = html.Div(
+    id='main',
+    children=[
+        html.Iframe(
+            id='chart',
+            style={
+                'border-width': '0',
+                'width': '500px',
+                'height': '400px',
+                'display': 'block',
+                'margin': '0 auto'}),
+        dbc.Select(
+            id='stat-select',
+            value='total_points',
+            options=[
+                {
+                    'label': ' '.join(s.capitalize() for s in stat.split('_')),
+                    'value': stat}
+                for stat in list(list(
+                    dat['players'].values())[0]['matches'].values())[0]]),
+        dbc.Switch(
+            id='inv-norm',
+            label="""Normalize chart such that most prolific and consistent is
+                located at (0, 0)""",
+            value=False)
+    ] if data_loaded else 'Error. Data not found.'
+)
 
 
 # Callback functions
-# @app.callback(
-#     Output('main', 'children'),
-#     Output('data-loaded', 'data'),
-#     Output('local-data', 'data'),
-#     Input('data-loaded', 'data'),
-#     State('local-data', 'modified_timestamp'),
-#     State('local-data', 'data')
-# )
-# def load_data(data_loaded, t, dat):
-#     if data_loaded: raise PreventUpdate
-#     if dt.fromtimestamp(max(0, t // 1000)).date() != TODAY: dat = get_data()
-
-#     content = [
-#         html.Iframe(
-#             id='chart',
-#             style={
-#                 'border-width': '0',
-#                 'width': '500px',
-#                 'height': '400px',
-#                 'display': 'block',
-#                 'margin': '0 auto'}),
-#         dbc.Select(
-#             id='stat-select',
-#             value='total_points',
-#             options=[
-#                 {
-#                     'label': ' '.join(s.capitalize() for s in stat.split('_')),
-#                     'value': stat}
-#                 for stat in list(list(
-#                     dat['players'].values())[0]['matches'].values())[0]]),
-#         dbc.Switch(
-#             id='inv-norm',
-#             label="""Normalize chart such that most prolific and consistent is
-#                 located at (0, 0)""",
-#             value=False)
-#     ]
-
-#     return content, True, dat
-
-
-# @app.callback(
-#     Output('chart', 'srcDoc'),
-#     Input('stat-select', 'value'),
-#     Input('inv-norm', 'value'),
-#     State('local-data', 'data')
-# )
-# def update_chart(stat, inv_norm, dat):
-#     return vis.var_vs_sum(
-#         dat=dat['players'],
-#         stat=stat,
-#         inv_norm=inv_norm
-#     ).interactive().to_html()
+@app.callback(
+    Output('chart', 'srcDoc'),
+    Input('stat-select', 'value'),
+    Input('inv-norm', 'value'),
+    State('local-data', 'data')
+)
+def update_chart(stat, inv_norm, dat):
+    return vis.var_vs_sum(
+        dat=dat['players'],
+        stat=stat,
+        inv_norm=inv_norm
+    ).to_html()
 
 
 # Run app
