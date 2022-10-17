@@ -45,6 +45,9 @@ def var_vs_sum(
             / (df['sum'].max() - df['sum'].min())
         )
 
+    df = df[df['sum'] < 1] if inv_norm else df[df['sum'] > 0]
+
+    if inv_norm:
         df['var'] = (
             (df['var'] - df['var'].min())
             / (df['var'].max() - df['var'].min())
@@ -52,7 +55,7 @@ def var_vs_sum(
 
     if x_lab is None:
         x_lab = (
-            'Inverse ' if inv_norm
+            'Normalized Inverse ' if inv_norm
             else '' if stat.startswith('total')
             else 'Total '
         )
@@ -60,6 +63,6 @@ def var_vs_sum(
 
     return alt.Chart(df).mark_point().encode(
         x=alt.X('sum:Q', title=x_lab),
-        y=alt.Y('var:Q', title='Inconsistency'),
-        tooltip=['name:N']
+        y=alt.Y('var:Q', title=(inv_norm * 'Normalized ' + 'Inconsistency')),
+        tooltip=[alt.Tooltip('name:N')]
     )
