@@ -1,5 +1,3 @@
-from datetime import datetime as dt
-from os import path
 from requests import get
 from time import sleep
 
