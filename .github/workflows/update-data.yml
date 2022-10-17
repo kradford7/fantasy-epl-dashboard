@@ -32,5 +32,6 @@ jobs:
         ls
         git config --local user.email "kradford7@users.noreply.github.com"
         git config --local user.name "kradford7"
-        git commit -am "Automated data update"
+        git add ./data.pkl
+        git commit -m "Automated data update"
         git push
