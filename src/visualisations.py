@@ -30,7 +30,8 @@ def var_vs_sum(
         the generated plot.
     """
     # Construct dataframe template
-    df = pd.DataFrame(columns=['name', stat, 'inconsistency', 'cost', 'position'])
+    df = pd.DataFrame(
+        columns=['name', stat, 'inconsistency', 'cost', 'position'])
 
     # Add each player to dataframe
     for player in dat['players'].values():
@@ -82,7 +83,7 @@ def var_vs_sum(
     # Generate chart and return
     return alt.Chart(
         df
-    ).mark_point(
+    ).mark_circle(
     ).encode(
         x=alt.X(
             shorthand=f'{stat}:Q',
@@ -96,7 +97,7 @@ def var_vs_sum(
             legend=None,
             sort='descending'),
         column=alt.Column(
-            shorthand='position:O',
+            shorthand='position:N',
             sort=['Goalkeeper', 'Defender', 'Midfielder', 'Forward'],
             title=None),
         tooltip=['name:N', f'{stat}:Q', 'inconsistency:Q', 'value:Q']

@@ -23,7 +23,7 @@ else:
 app = Dash(
     name=__name__,
     title='Fantasy EPL Dashboard',
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[dbc.themes.SLATE],
     suppress_callback_exceptions=True
 )
 
@@ -43,8 +43,8 @@ app.layout = html.Div(
             id='chart',
             style={
                 'border-width': '0',
-                'width': '500px',
-                'height': '400px',
+                'width': '100%',
+                'height': '425px',
                 'display': 'block',
                 'margin': '0 auto'}),
         dbc.Select(
@@ -69,12 +69,11 @@ app.layout = html.Div(
 @app.callback(
     Output('chart', 'srcDoc'),
     Input('stat-select', 'value'),
-    Input('inv-norm', 'value'),
-    State('local-data', 'data')
+    Input('inv-norm', 'value')
 )
-def update_chart(stat, inv_norm, dat):
+def update_chart(stat, inv_norm):
     return vis.var_vs_sum(
-        dat=dat['players'],
+        dat=dat,
         stat=stat,
         inv_norm=inv_norm
     ).to_html()

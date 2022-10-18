@@ -14,21 +14,21 @@ ENDPOINTS = {
 DATA_PATH = './data.pkl'
 
 
-# Construct data object (keys cast as strings for Dash compatability)
+# Construct data object
 r = get(ENDPOINTS['general']).json()
 dat = {
     'teams': {
-        str(team['id']): {
+        team['id']: {
             k: v for k, v in team.items() if k in [
                 'name', 'short_name', 'strength']}
         for team in r['teams']},
     'positions': {
-        str(position['id']): {
+        position['id']: {
             k: v for k, v in position.items() if k in [
                 'singular_name', 'singular_name_short']}
         for position in r['element_types']},
     'players': {
-        str(player['id']): {
+        player['id']: {
             k: v for k, v in player.items() if k in [
                 'chance_of_playing_next_round',
                 'chance_of_playing_this_round', 'element_type',
@@ -36,7 +36,7 @@ dat = {
                 'minutes']}
         for player in r['elements']},
     'fixtures': {
-        str(fixture['id']): {
+        fixture['id']: {
             k: v for k, v in fixture.items() if k in [
                 'finished', 'kickoff_time', 'team_a', 'team_a_score',
                 'team_h', 'team_h_score']}
