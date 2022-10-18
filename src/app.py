@@ -39,28 +39,29 @@ server = app.server
 app.layout = html.Div(
     id='main',
     children=[
+        dcc.Location(id='url'),
         html.Iframe(
             id='chart',
             style={
                 'border-width': '0',
                 'width': '100%',
-                'height': '425px',
+                'height': '625px',
                 'display': 'block',
                 'margin': '0 auto'}),
-        dbc.Select(
-            id='stat-select',
-            value='total_points',
-            options=[
-                {
-                    'label': ' '.join(s.capitalize() for s in stat.split('_')),
-                    'value': stat}
-                for stat in list(list(
-                    dat['players'].values())[0]['matches'].values())[0]]),
-        dbc.Switch(
-            id='inv-norm',
-            label="""Normalize chart such that most prolific and consistent is
-                located at (0, 0)""",
-            value=False)
+        # dbc.Select(
+        #     id='stat-select',
+        #     value='total_points',
+        #     options=[
+        #         {
+        #             'label': ' '.join(s.capitalize() for s in stat.split('_')),
+        #             'value': stat}
+        #         for stat in list(list(
+        #             dat['players'].values())[0]['matches'].values())[0]]),
+        # dbc.Switch(
+        #     id='inv-norm',
+        #     label="""Normalize chart such that most prolific and consistent is
+        #         located at (0, 0)""",
+        #     value=False)
     ] if data_loaded else 'Error. Data not found.'
 )
 
@@ -68,14 +69,15 @@ app.layout = html.Div(
 # Callback functions
 @app.callback(
     Output('chart', 'srcDoc'),
-    Input('stat-select', 'value'),
-    Input('inv-norm', 'value')
+    Input('url', 'pathname')
+    # Input('stat-select', 'value'),
+    # Input('inv-norm', 'value')
 )
-def update_chart(stat, inv_norm):
-    return vis.var_vs_sum(
+def update_chart(_):#stat, inv_norm):
+    return vis.plots(
         dat=dat,
-        stat=stat,
-        inv_norm=inv_norm
+        # stat=stat,
+        # inv_norm=inv_norm
     ).to_html()
 
 

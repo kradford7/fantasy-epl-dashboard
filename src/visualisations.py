@@ -3,14 +3,13 @@ import numpy as np
 import pandas as pd
 
 
-def var_vs_sum(
+def plots(
     dat:dict,
     stat:str='total_points',
-    inv_norm:bool=False,
-    x_lab:str=None
+    inv_norm:bool=False
 ) -> alt.Chart:
     """
-    Generates a plot of variance vs sum of some defined stat.
+    Generates the main plots.
     
     Parameters
     ----------
@@ -21,8 +20,6 @@ def var_vs_sum(
     inv_norm : bool, optional
         whether to normalize the data such that [0, 0] represents most prolific
         and most consistent and [1, 1] is the opposite. Default False.
-    x_lab : str, optional
-        the desired label on the x axis
 
     Returns
     -------
@@ -31,80 +28,113 @@ def var_vs_sum(
     """
     # Construct dataframe template
     df = pd.DataFrame(
-        columns=['name', stat, 'inconsistency', 'cost', 'position'])
+        columns=['name', 'position', 'round', stat, 'cost'])
 
-    # Add each player to dataframe
+    # Add each match per player to dataframe
     for player in dat['players'].values():
-        # Collect stat for each match that player played in
-        stats = [
-            match[stat]
-            for match in player['matches'].values()
-            if match['minutes'] > 0
-        ]
+        for round, match in player['matches'].items():
+            if match['minutes'] > 0:
+                df.loc[len(df)] = [
+                    player['name'],
+                    player['position'],
+                    round,
+                    match[stat],
+                    match['value']
+                ]
 
-        # Get player info, calculate sum & var then add player to dataframe
-        df.loc[len(df)] = [
-            player['name'],
-            np.sum(stats),
-            np.var(stats),
-            player['matches'][max(player['matches'].keys())]['value'],
-            player['position']
-        ]
-
-    # Calculate player value (stat / cost)
-    df['value'] = df[stat] / df['cost']
-
-    # Convert position numbers to names
+    # Convert position ids to names
     df['position'] = df['position'].map(
         {k: v['name'] for k, v in dat['positions'].items()}
     )
 
     # Normalize 'sum' and 'var' columns if indicated
-    if inv_norm:
-        df[stat] = 1 - (
-            (df[stat] - df[stat].min())
-            / (df[stat].max() - df[stat].min())
-        )
+    # if inv_norm:
+    #     df[stat] = 1 - (
+    #         (df[stat] - df[stat].min())
+    #         / (df[stat].max() - df[stat].min())
+    #     )
 
-        df['inconsistency'] = (
-            (df['inconsistency'] - df['inconsistency'].min())
-            / (df['inconsistency'].max() - df['inconsistency'].min())
-        )
+    #     df['inconsistency'] = (
+    #         (df['inconsistency'] - df['inconsistency'].min())
+    #         / (df['inconsistency'].max() - df['inconsistency'].min())
+    #     )
 
     # Generate x label if not given
-    if x_lab is None:
-        x_lab = (
-            'Normalized Inverse ' if inv_norm
-            else '' if stat.startswith('total')
-            else 'Total '
-        )
-        x_lab += ' '.join(s.capitalize() for s in stat.split('_'))
+    # if x_lab is None:
+    #     x_lab = (
+    #         'Normalized Inverse ' if inv_norm
+    #         else '' if stat.startswith('total')
+    #         else 'Total '
+    #     )
+    #     x_lab += ' '.join(s.capitalize() for s in stat.split('_'))
 
-    # Generate chart and return
-    return alt.Chart(
-        df
+    # Define the base upon which to build plots
+    selector = alt.selection_multi(empty='none', fields=['name'])
+    base = alt.Chart(df).add_selection(selector)
+
+    # Define points plot [var(stat) vs sum(stat) facet by position]
+    points = base.transform_aggregate(
+        var=f'variance({stat})',
+        sum=f'sum({stat})',
+        current_cost='max(cost)',   # TODO: somehow get latest cost
+        groupby=['name', 'position']
+    ).transform_calculate(
+        value='datum.sum / datum.current_cost'
     ).mark_circle(
     ).encode(
         x=alt.X(
-            shorthand=f'{stat}:Q',
-            title=x_lab),
+            shorthand='sum:Q',
+            title='temp_x_title'),
         y=alt.Y(
-            shorthand='inconsistency:Q',
-            title=(inv_norm * 'Normalized ' + 'Inconsistency')),
-        opacity='value:Q',
-        color=alt.Color(
-            shorthand='value:Q',
-            legend=None,
-            sort='descending'),
+            shorthand='var:Q',
+            title='temp_y_title'),
+        opacity=alt.condition(
+            predicate=selector,
+            if_true=alt.value(1.0),
+            if_false=alt.Opacity('value:Q', legend=None)),
+        color=alt.condition(
+            predicate=selector,
+            if_true=alt.value('red'),
+            if_false=alt.Color('value:Q', legend=None, sort='descending')),
         column=alt.Column(
-            shorthand='position:N',
+            shorthand='position:O',
             sort=['Goalkeeper', 'Defender', 'Midfielder', 'Forward'],
             title=None),
-        tooltip=['name:N', f'{stat}:Q', 'inconsistency:Q', 'value:Q']
+        tooltip=['name:N', 'sum:Q', 'var:Q', 'value:Q']
+    ).properties(
+        width=275,
+        height=225
+    )
+
+    # Define lines plot [stat vs round for selected players]
+    lines = base.mark_line(
+    ).encode(
+        x='round:Q',
+        y=f'{stat}:Q',
+        color='name:N'
+    ).transform_filter(
+        selector
+    ).properties(
+        width=1100,
+        height=225
+    )
+
+    # Concatenate charts and return
+    return alt.vconcat(
+        points,
+        lines
     ).configure(
         background='#FFF0'
     ).configure_axis(
-        grid=False
+        grid=False,
+        labelColor='lightgrey',
+        titleColor='lightgrey'
+    ).configure_header(
+        labelColor='lightgrey'
     ).configure_view(
         strokeWidth=0
+    ).configure_legend(
+        labelColor='lightgrey',
+        titleColor='lightgrey',
+        orient='top-right'
     )
