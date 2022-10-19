@@ -5,6 +5,7 @@ import pandas as pd
 
 def plots(
     dat:dict,
+    dims:dict,
     stat:str='total_points',
     inv_norm:bool=False
 ) -> alt.Chart:
@@ -15,6 +16,8 @@ def plots(
     ----------
     dat : dict
         data as loaded from data.pkl
+    dims : dict
+        plot dimensions. must contain keys 'height' and 'width'
     stat : str, optional
         a key in dat[player_id][matches] to visualise. Default 'total_points'
     inv_norm : bool, optional
@@ -84,10 +87,10 @@ def plots(
     ).encode(
         x=alt.X(
             shorthand='sum:Q',
-            title='temp_x_title'),
+            title=' '.join(s.capitalize() for s in stat.split('_'))),
         y=alt.Y(
             shorthand='var:Q',
-            title='temp_y_title'),
+            title='Inconsistency'),
         opacity=alt.condition(
             predicate=selector,
             if_true=alt.value(1.0),
@@ -102,21 +105,30 @@ def plots(
             title=None),
         tooltip=['name:N', 'sum:Q', 'var:Q', 'value:Q']
     ).properties(
-        width=275,
-        height=225
+        width=np.floor(0.85 * dims['width']) // 4,
+        height=np.floor(0.375 * dims['height'])
     )
 
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
     ).encode(
-        x='round:Q',
-        y=f'{stat}:Q',
-        color='name:N'
+        x=alt.X(
+            shorthand='round:Q',
+            axis=alt.Axis(tickMinStep=1),
+            scale=alt.Scale(domain=(1, df['round'].max())),
+            title='Matchday'),
+        y=alt.Y(
+            shorthand=f'{stat}:Q',
+            scale=alt.Scale(domain=(0, df[stat].max())),    # TODO: add option to display cumulative plot
+            title=' '.join(s.capitalize() for s in stat.split('_'))),
+        color=alt.Color(
+            shorthand='name:N',
+            title='Name')
     ).transform_filter(
         selector
     ).properties(
-        width=1100,
-        height=225
+        width=np.floor(0.9 * dims['width']),
+        height=np.floor(0.375 * dims['height'])
     )
 
     # Concatenate charts and return

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-import visualisations as vis
+import plots
 
 
 # Load data
@@ -35,19 +35,19 @@ server = app.server
 # alt.data_transformers.enable('data_server')
 # alt.data_transformers.disable_max_rows()
 
-# Dashboard Layout
+# Dashboard Layout  TODO: consider dbc.Col(xs, xm) params for mobile interface
 app.layout = html.Div(
-    id='main',
     children=[
         dcc.Location(id='url'),
         html.Iframe(
             id='chart',
             style={
-                'border-width': '0',
-                'width': '100%',
-                'height': '625px',
+                'border-width': 0,
+                'width': '100vw',
+                'height': '100vh',
                 'display': 'block',
-                'margin': '0 auto'}),
+                'margin': 0,
+                'padding': 0}),
         # dbc.Select(
         #     id='stat-select',
         #     value='total_points',
@@ -61,21 +61,41 @@ app.layout = html.Div(
         #     id='inv-norm',
         #     label="""Normalize chart such that most prolific and consistent is
         #         located at (0, 0)""",
-        #     value=False)
-    ] if data_loaded else 'Error. Data not found.'
+        #     value=False),
+        dcc.Store(id='viewport-dims')
+    ] if data_loaded else 'Error. Data not found.',
+    style={
+        'width': 'inherit',
+        'height': 'inherit',
+        'margin': 0,
+        'padding': 0}
 )
 
 
 # Callback functions
+app.clientside_callback(
+    """
+    function(_) {
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        return {'height': h, 'width': w};
+    }
+    """,
+    Output('viewport-dims', 'data'),
+    Input('url', 'pathname')
+)
+
 @app.callback(
     Output('chart', 'srcDoc'),
-    Input('url', 'pathname')
+    Input('viewport-dims', 'modified_timestamp'),
+    State('viewport-dims', 'data'),
     # Input('stat-select', 'value'),
     # Input('inv-norm', 'value')
 )
-def update_chart(_):#stat, inv_norm):
-    return vis.plots(
+def update_chart(_, dims):#stat, inv_norm):
+    return plots.plots(
         dat=dat,
+        dims=dims,
         # stat=stat,
         # inv_norm=inv_norm
     ).to_html()
