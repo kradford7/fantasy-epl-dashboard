@@ -106,7 +106,7 @@ def plots(
         tooltip=['name:N', 'sum:Q', 'var:Q', 'value:Q']
     ).properties(
         width=np.floor(0.85 * dims['width']) // 4,
-        height=np.floor(0.375 * dims['height'])
+        height=np.floor(0.38 * dims['height'])
     )
 
     # Define lines plot [stat vs round for selected players]
@@ -128,7 +128,7 @@ def plots(
         selector
     ).properties(
         width=np.floor(0.9 * dims['width']),
-        height=np.floor(0.375 * dims['height'])
+        height=np.floor(0.38 * dims['height'])
     )
 
     # Concatenate charts and return

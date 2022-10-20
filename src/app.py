@@ -14,6 +14,10 @@ import plots
 # Load data
 try:
     with open('./data.pkl', 'rb') as f: dat = pickle.load(f)
+    stats = [
+        stat for stat in
+        list(list(dat['players'].values())[0]['matches'].values())[0].keys()
+    ]
 except:
     data_loaded = False
 else:
@@ -36,39 +40,54 @@ server = app.server
 # alt.data_transformers.disable_max_rows()
 
 # Dashboard Layout  TODO: consider dbc.Col(xs, xm) params for mobile interface
-app.layout = html.Div(
+app.layout = dbc.Container(
     children=[
         dcc.Location(id='url'),
-        html.Iframe(
-            id='chart',
+        dcc.Store(id='viewport-dims'),
+        dbc.Row(
+            children=[
+                dbc.Col(
+                    children=[
+                        dbc.Select(
+                            id='select-stat',
+                            value='total_points',
+                            options=[
+                                {
+                                    'value': stat,
+                                    'label': ' '.join(
+                                        s.capitalize() for s in stat.split('_'))
+                                } for stat in stats]),
+                        dbc.Switch(id='switch-norm', label='Normalize'),
+                        dbc.Switch(id='switch-cuml', label='Cumulative')],
+                    id='sidebar',
+                    className='bg-info',
+                    style={
+                        'height': 'inherit',
+                        'padding': '2rem'},
+                    width=2),
+                dbc.Col(
+                    children=html.Iframe(
+                        id='chart',
+                        style={
+                            'border-width': 0,
+                            'width': 'inherit',
+                            'height': 'inherit',
+                            'margin': 0,
+                            'padding': 0}),
+                    id='main',
+                    style={
+                        'height': 'inherit',
+                        'padding': 0})],
             style={
-                'border-width': 0,
-                'width': '100vw',
-                'height': '100vh',
-                'display': 'block',
-                'margin': 0,
-                'padding': 0}),
-        # dbc.Select(
-        #     id='stat-select',
-        #     value='total_points',
-        #     options=[
-        #         {
-        #             'label': ' '.join(s.capitalize() for s in stat.split('_')),
-        #             'value': stat}
-        #         for stat in list(list(
-        #             dat['players'].values())[0]['matches'].values())[0]]),
-        # dbc.Switch(
-        #     id='inv-norm',
-        #     label="""Normalize chart such that most prolific and consistent is
-        #         located at (0, 0)""",
-        #     value=False),
-        dcc.Store(id='viewport-dims')
+                'height': 'inherit',
+                'margin': 0})
     ] if data_loaded else 'Error. Data not found.',
     style={
-        'width': 'inherit',
-        'height': 'inherit',
-        'margin': 0,
-        'padding': 0}
+        'width': '99vw',
+        'height': '99vh',
+        'padding': 0,
+        'margin': 0},
+    fluid=True
 )
 
 
@@ -76,8 +95,8 @@ app.layout = html.Div(
 app.clientside_callback(
     """
     function(_) {
-        var w = window.innerWidth;
-        var h = window.innerHeight;
+        var w = document.getElementById("main").offsetWidth;
+        var h = document.getElementById("main").offsetHeight;
         return {'height': h, 'width': w};
     }
     """,
