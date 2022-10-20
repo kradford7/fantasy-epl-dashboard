@@ -7,7 +7,7 @@ def plots(
     dat:dict,
     dims:dict,
     stat:str='total_points',
-    inv_norm:bool=False
+    cumulative:bool=False
 ) -> alt.Chart:
     """
     Generates the main plots.
@@ -20,9 +20,8 @@ def plots(
         plot dimensions. must contain keys 'height' and 'width'
     stat : str, optional
         a key in dat[player_id][matches] to visualise. Default 'total_points'
-    inv_norm : bool, optional
-        whether to normalize the data such that [0, 0] represents most prolific
-        and most consistent and [1, 1] is the opposite. Default False.
+    cumulative : bool, optional
+        whether to plot lines chart as cumulative. Default False.
 
     Returns
     -------
@@ -50,30 +49,15 @@ def plots(
         {k: v['name'] for k, v in dat['positions'].items()}
     )
 
-    # Normalize 'sum' and 'var' columns if indicated
-    # if inv_norm:
-    #     df[stat] = 1 - (
-    #         (df[stat] - df[stat].min())
-    #         / (df[stat].max() - df[stat].min())
-    #     )
-
-    #     df['inconsistency'] = (
-    #         (df['inconsistency'] - df['inconsistency'].min())
-    #         / (df['inconsistency'].max() - df['inconsistency'].min())
-    #     )
-
-    # Generate x label if not given
-    # if x_lab is None:
-    #     x_lab = (
-    #         'Normalized Inverse ' if inv_norm
-    #         else '' if stat.startswith('total')
-    #         else 'Total '
-    #     )
-    #     x_lab += ' '.join(s.capitalize() for s in stat.split('_'))
-
     # Define the base upon which to build plots
     selector = alt.selection_multi(empty='none', fields=['name'])
-    base = alt.Chart(df).add_selection(selector)
+    base = alt.Chart(
+        df
+    ).add_selection(
+        selector
+    ).properties(
+        height=dims['height']
+    )
 
     # Define points plot [var(stat) vs sum(stat) facet by position]
     points = base.transform_aggregate(
@@ -87,9 +71,11 @@ def plots(
     ).encode(
         x=alt.X(
             shorthand='sum:Q',
+            axis=alt.Axis(format=' .2~s'),
             title=' '.join(s.capitalize() for s in stat.split('_'))),
         y=alt.Y(
             shorthand='var:Q',
+            axis=alt.Axis(labels=False, ticks=False),
             title='Inconsistency'),
         opacity=alt.condition(
             predicate=selector,
@@ -105,12 +91,14 @@ def plots(
             title=None),
         tooltip=['name:N', 'sum:Q', 'var:Q', 'value:Q']
     ).properties(
-        width=np.floor(0.85 * dims['width']) // 4,
-        height=np.floor(0.38 * dims['height'])
+        width=dims['width-pts']
     )
 
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
+    ).transform_window(
+        cuml_stat=f'sum({stat})',
+        groupby=['name', 'position']
     ).encode(
         x=alt.X(
             shorthand='round:Q',
@@ -118,8 +106,11 @@ def plots(
             scale=alt.Scale(domain=(1, df['round'].max())),
             title='Matchday'),
         y=alt.Y(
-            shorthand=f'{stat}:Q',
-            scale=alt.Scale(domain=(0, df[stat].max())),    # TODO: add option to display cumulative plot
+            shorthand=f"{'cuml_stat' if cumulative else stat}:Q",
+            axis=alt.Axis(format=' .2~s'),
+            scale=alt.Scale(domain=(
+                0,
+                (df.groupby('name').sum() if cumulative else df)[stat].max())),
             title=' '.join(s.capitalize() for s in stat.split('_'))),
         color=alt.Color(
             shorthand='name:N',
@@ -127,8 +118,7 @@ def plots(
     ).transform_filter(
         selector
     ).properties(
-        width=np.floor(0.9 * dims['width']),
-        height=np.floor(0.38 * dims['height'])
+        width=dims['width-lns']
     )
 
     # Concatenate charts and return

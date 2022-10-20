@@ -1,14 +1,10 @@
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
 
-import altair as alt
 import dash_bootstrap_components as dbc
-import numpy as np
-import pandas as pd
 import pickle
 
-import plots
+from plots import plots
 
 
 # Load data
@@ -31,13 +27,7 @@ app = Dash(
     suppress_callback_exceptions=True
 )
 
-# app.config.suppress_callback_exceptions = True
 server = app.server
-
-# Configure Altair - uncomment to run locally, comment out for Heroku deployment
-# alt.renderers.enable('mimetype')
-# alt.data_transformers.enable('data_server')
-# alt.data_transformers.disable_max_rows()
 
 # Dashboard Layout  TODO: consider dbc.Col(xs, xm) params for mobile interface
 app.layout = dbc.Container(
@@ -55,9 +45,9 @@ app.layout = dbc.Container(
                                 {
                                     'value': stat,
                                     'label': ' '.join(
-                                        s.capitalize() for s in stat.split('_'))
+                                        s.capitalize()
+                                        for s in stat.split('_'))
                                 } for stat in stats]),
-                        dbc.Switch(id='switch-norm', label='Normalize'),
                         dbc.Switch(id='switch-cuml', label='Cumulative')],
                     id='sidebar',
                     className='bg-info',
@@ -70,8 +60,8 @@ app.layout = dbc.Container(
                         id='chart',
                         style={
                             'border-width': 0,
-                            'width': 'inherit',
-                            'height': 'inherit',
+                            'width': '95%',
+                            'height': '95%',
                             'margin': 0,
                             'padding': 0}),
                     id='main',
@@ -83,8 +73,8 @@ app.layout = dbc.Container(
                 'margin': 0})
     ] if data_loaded else 'Error. Data not found.',
     style={
-        'width': '99vw',
-        'height': '99vh',
+        'width': '100vw',
+        'height': '100vh',
         'padding': 0,
         'margin': 0},
     fluid=True
@@ -95,9 +85,14 @@ app.layout = dbc.Container(
 app.clientside_callback(
     """
     function(_) {
-        var w = document.getElementById("main").offsetWidth;
-        var h = document.getElementById("main").offsetHeight;
-        return {'height': h, 'width': w};
+        var w = document.getElementById("chart").offsetWidth;
+        var h = document.getElementById("chart").offsetHeight;
+
+        return {
+            'height': Math.floor(0.36 * h),
+            'width-pts': Math.floor(0.2 * w),
+            'width-lns': Math.floor(0.86 * w)
+        };
     }
     """,
     Output('viewport-dims', 'data'),
@@ -107,16 +102,16 @@ app.clientside_callback(
 @app.callback(
     Output('chart', 'srcDoc'),
     Input('viewport-dims', 'modified_timestamp'),
-    State('viewport-dims', 'data'),
-    # Input('stat-select', 'value'),
-    # Input('inv-norm', 'value')
+    Input('select-stat', 'value'),
+    Input('switch-cuml', 'value'),
+    State('viewport-dims', 'data')
 )
-def update_chart(_, dims):#stat, inv_norm):
-    return plots.plots(
+def update_chart(_, stat, cuml, dims):
+    return plots(
         dat=dat,
         dims=dims,
-        # stat=stat,
-        # inv_norm=inv_norm
+        stat=stat,
+        cumulative=cuml
     ).to_html()
 
 
