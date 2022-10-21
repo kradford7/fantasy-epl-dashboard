@@ -1,6 +1,7 @@
 from requests import get
 from time import sleep
 
+import pandas as pd
 import pickle
 
 
@@ -40,8 +41,7 @@ dat = {
             k: v for k, v in fixture.items() if k in [
                 'finished', 'kickoff_time', 'team_a', 'team_a_score',
                 'team_h', 'team_h_score']}
-        for fixture in get(ENDPOINTS['fixtures']).json()},
-    'players-hist': {}}
+        for fixture in get(ENDPOINTS['fixtures']).json()}}
 
 # Drop unavailable players
 dat['players'] = {
@@ -84,6 +84,36 @@ for id, player in dat['players'].items():
                 'penalties_saved', 'penalties_missed', 'yellow_cards',
                 'red_cards', 'saves', 'bonus', 'bps', 'value', 'selected']}
         for match in get(ENDPOINTS['player'](id)).json()['history']}
+
+# Construct DataFrame from players
+dat['players-df'] = pd.DataFrame(dat['players']).T[
+    ['name', 'team', 'position', 'matches']]
+
+# Convert team and position from index to name
+dat['players-df']['team'] = dat['players-df']['team'].map(
+    {k: v['name'] for k, v in dat['teams'].items()})
+
+dat['players-df']['position'] = dat['players-df']['position'].map(
+    {k: v['name'] for k, v in dat['positions'].items()})
+
+# Convert match data from dict to DataFrame
+dat['players-df']['matches'] = pd.Series(
+    data=[
+        pd.DataFrame(x).T.reset_index().rename(columns={'index': 'round'})
+        for x in dat['players-df']['matches']],
+    index=dat['players-df'].index)
+
+# Expand match data
+for idx, matches in dat['players-df'].pop('matches').items():
+  matches.index = [idx for _ in matches.index]
+  matches[['name', 'team', 'position']] = dat['players-df'].loc[
+    idx,
+    ['name', 'team', 'position']]
+  dat['players-df'] = pd.concat([dat['players-df'].drop(index=idx), matches])
+
+# Convert dtypes
+dat['players-df'].loc[:, 'round':] = \
+    dat['players-df'].loc[:, 'round':].astype('int64')
 
 # Save data
 with open(DATA_PATH, 'wb') as f: pickle.dump(dat, f)

@@ -22,7 +22,7 @@ jobs:
         cache: 'pip'
         
     - name: Install Dependencies
-      run: pip install requests
+      run: pip install requests pandas
       
     - name: Run script
       run: python ./src/get_data.py
