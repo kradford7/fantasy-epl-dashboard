@@ -108,7 +108,7 @@ app.clientside_callback(
 )
 def update_chart(_, stat, cuml, dims):
     return plots(
-        dat=dat,
+        df=dat['players-df'],
         dims=dims,
         stat=stat,
         cumulative=cuml

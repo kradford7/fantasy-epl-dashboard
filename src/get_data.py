@@ -99,7 +99,8 @@ dat['players-df']['position'] = dat['players-df']['position'].map(
 # Convert match data from dict to DataFrame
 dat['players-df']['matches'] = pd.Series(
     data=[
-        pd.DataFrame(x).T.reset_index().rename(columns={'index': 'round'})
+        pd.DataFrame(x).T.reset_index().rename(
+            columns={'index': 'round', 'value': 'cost'})
         for x in dat['players-df']['matches']],
     index=dat['players-df'].index)
 

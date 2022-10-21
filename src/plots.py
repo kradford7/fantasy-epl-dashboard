@@ -1,10 +1,9 @@
 import altair as alt
-import numpy as np
 import pandas as pd
 
 
 def plots(
-    dat:dict,
+    df:pd.DataFrame,
     dims:dict,
     stat:str='total_points',
     cumulative:bool=False
@@ -14,8 +13,8 @@ def plots(
     
     Parameters
     ----------
-    dat : dict
-        data as loaded from data.pkl
+    df : pandas.DataFrame
+        players-df DataFrame from data.pkl
     dims : dict
         plot dimensions. must contain keys 'height' and 'width'
     stat : str, optional
@@ -28,27 +27,6 @@ def plots(
     alt.Chart
         the generated plot.
     """
-    # Construct dataframe template
-    df = pd.DataFrame(
-        columns=['name', 'position', 'round', stat, 'cost'])
-
-    # Add each match per player to dataframe
-    for player in dat['players'].values():
-        for round, match in player['matches'].items():
-            if match['minutes'] > 0:
-                df.loc[len(df)] = [
-                    player['name'],
-                    player['position'],
-                    round,
-                    match[stat],
-                    match['value']
-                ]
-
-    # Convert position ids to names
-    df['position'] = df['position'].map(
-        {k: v['name'] for k, v in dat['positions'].items()}
-    )
-
     # Define the base upon which to build plots
     selector = alt.selection_multi(empty='none', fields=['name'])
     base = alt.Chart(
