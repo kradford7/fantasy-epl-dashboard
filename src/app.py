@@ -53,7 +53,7 @@ app.layout = dbc.Container(
                     className='bg-info',
                     style={
                         'height': 'inherit',
-                        'padding': '2rem'},
+                        'padding': '1rem'},
                     width=2),
                 dbc.Col(
                     children=html.Iframe(

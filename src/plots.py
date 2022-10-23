@@ -1,3 +1,4 @@
+from cgitb import text
 import altair as alt
 import pandas as pd
 
@@ -27,6 +28,8 @@ def plots(
     alt.Chart
         the generated plot.
     """
+    stat_title = ' '.join(s.capitalize() for s in stat.split('_'))
+
     # Define the base upon which to build plots
     selector = alt.selection_multi(empty='none', fields=['name'])
     base = alt.Chart(
@@ -41,16 +44,16 @@ def plots(
     points = base.transform_aggregate(
         var=f'variance({stat})',
         sum=f'sum({stat})',
-        current_cost='max(cost)',   # TODO: somehow get latest cost
+        latest='argmax(round)',
         groupby=['name', 'position']
     ).transform_calculate(
-        value='datum.sum / datum.current_cost'
+        value='datum.sum / datum.latest.cost'
     ).mark_circle(
     ).encode(
         x=alt.X(
             shorthand='sum:Q',
             axis=alt.Axis(format=' .2~s'),
-            title=' '.join(s.capitalize() for s in stat.split('_'))),
+            title=stat_title),
         y=alt.Y(
             shorthand='var:Q',
             axis=alt.Axis(labels=False, ticks=False),
@@ -67,13 +70,31 @@ def plots(
             shorthand='position:O',
             sort=['Goalkeeper', 'Defender', 'Midfielder', 'Forward'],
             title=None),
-        tooltip=['name:N', 'sum:Q', 'var:Q', 'value:Q']
+        tooltip=[
+            alt.Tooltip(
+                shorthand='name:N',
+                title='Name'),
+            alt.Tooltip(
+                shorthand='sum:Q',
+                title=stat_title),
+            alt.Tooltip(
+                shorthand='var:Q',
+                format=' .2~s',
+                title='Inconsistency'),
+            alt.Tooltip(
+                shorthand='value:Q',
+                format=' .2~s',
+                title='Value'),
+            alt.Tooltip(
+                shorthand='latest[cost]:Q',
+                title='Cost')]
     ).properties(
         width=dims['width-pts']
     )
 
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
+        point=True
     ).transform_window(
         cuml_stat=f'sum({stat})',
         groupby=['name', 'position']
@@ -92,7 +113,15 @@ def plots(
             title=' '.join(s.capitalize() for s in stat.split('_'))),
         color=alt.Color(
             shorthand='name:N',
-            title='Name')
+            title='Name'),
+        tooltip=[
+            alt.Tooltip(
+                shorthand=f"{'cuml_stat' if cumulative else stat}:Q",
+                format=' .2~s',
+                title=('Cumulative ' if cumulative else '') + stat_title),
+            alt.Tooltip(
+                shorthand='minutes',
+                title='Minutes')]
     ).transform_filter(
         selector
     ).properties(
