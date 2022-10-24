@@ -38,9 +38,10 @@ app.layout = dbc.Container(
             children=[
                 dbc.Col(
                     children=[
-                        dbc.Select(
+                        dcc.Dropdown(
                             id='select-stat',
                             value='total_points',
+                            clearable=False,
                             options=[
                                 {
                                     'value': stat,
@@ -48,9 +49,20 @@ app.layout = dbc.Container(
                                         s.capitalize()
                                         for s in stat.split('_'))
                                 } for stat in stats]),
-                        dbc.Switch(id='switch-cuml', label='Cumulative')],
+                        dbc.Switch(
+                            id='switch-cuml',
+                            label='Cumulative'),
+                        dcc.Dropdown(
+                            id='select-pos',
+                            searchable=False,
+                            placeholder='Filter position...',
+                            options=[
+                                {
+                                    'value': pos['name'],
+                                    'label': pos['name']
+                                } for pos in dat['positions'].values()])],
                     id='sidebar',
-                    className='bg-info',
+                    class_name='bg-info',
                     style={
                         'height': 'inherit',
                         'padding': '1rem'},
@@ -104,14 +116,16 @@ app.clientside_callback(
     Input('viewport-dims', 'modified_timestamp'),
     Input('select-stat', 'value'),
     Input('switch-cuml', 'value'),
+    Input('select-pos', 'value'),
     State('viewport-dims', 'data')
 )
-def update_chart(_, stat, cuml, dims):
+def update_chart(_, stat, cuml, pos, dims):
     return plots(
         df=dat['players-df'],
         dims=dims,
         stat=stat,
-        cumulative=cuml
+        cumulative=cuml,
+        pos=pos
     ).to_html()
 
 

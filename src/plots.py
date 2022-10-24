@@ -7,7 +7,8 @@ def plots(
     df:pd.DataFrame,
     dims:dict,
     stat:str='total_points',
-    cumulative:bool=False
+    cumulative:bool=False,
+    pos:str=None
 ) -> alt.Chart:
     """
     Generates the main plots.
@@ -22,6 +23,8 @@ def plots(
         a key in dat[player_id][matches] to visualise. Default 'total_points'
     cumulative : bool, optional
         whether to plot lines chart as cumulative. Default False.
+    pos : str, optional
+        which position to focus on. Default None.
 
     Returns
     -------
@@ -33,7 +36,7 @@ def plots(
     # Define the base upon which to build plots
     selector = alt.selection_multi(empty='none', fields=['name'])
     base = alt.Chart(
-        df
+        df if pos is None else df[df['position'] == pos]
     ).add_selection(
         selector
     ).properties(
@@ -92,6 +95,28 @@ def plots(
         width=dims['width-pts']
     )
 
+    # Define form plot
+    # points_form = base.transform_window(
+    #     l1=f'lag({stat},1)',
+    #     l2=f'lag({stat},2)',
+    #     l3=f'lag({stat},3)',
+    #     l4=f'lag({stat},4)',
+    #     groupby=['name', 'position']
+    # ).transform_aggregate(
+    #     latest='max(round)'
+    # ).transform_filter(
+    #     alt.datum.round == alt.datum.latest
+    # ).transform_calculate(
+    #     form3=f'(datum.l1+datum.l2+{stat}) / (3*mean({stat}))',
+    #     form5=f'(datum.l1+datum.l2+datum.l3+datum.l4+{stat} / (3*mean({stat}))'
+    # ).mark_circle(
+    # ).encode(
+    #     x='form5:Q',
+    #     y='form3:Q'
+    # ).properties(
+    #     width=dims['width-pts']
+    # )
+
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
         point=True
@@ -130,7 +155,7 @@ def plots(
 
     # Concatenate charts and return
     return alt.vconcat(
-        points,
+        points,# if pos is None else alt.hconcat(points, points_form),
         lines
     ).configure(
         background='#FFF0'
