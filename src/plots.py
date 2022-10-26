@@ -7,7 +7,7 @@ def plots(
     df:pd.DataFrame,
     dims:dict,
     stat:str='total_points',
-    cumulative:bool=False,
+    aggregate:str='weekly',
     pos:str=None
 ) -> alt.Chart:
     """
@@ -21,8 +21,8 @@ def plots(
         plot dimensions. must contain keys 'height' and 'width'
     stat : str, optional
         a key in dat[player_id][matches] to visualise. Default 'total_points'
-    cumulative : bool, optional
-        whether to plot lines chart as cumulative. Default False.
+    aggregate : str, optional
+        how to aggregate lines plot. Default 'weekly'
     pos : str, optional
         which position to focus on. Default None.
 
@@ -34,7 +34,7 @@ def plots(
     stat_title = ' '.join(s.capitalize() for s in stat.split('_'))
 
     # Define the base upon which to build plots
-    selector = alt.selection_multi(empty='none', fields=['name'])
+    selector = alt.selection_multi(empty='none', fields=['name', 'position'])
     base = alt.Chart(
         df if pos is None else df[df['position'] == pos]
     ).add_selection(
@@ -95,34 +95,27 @@ def plots(
         width=dims['width-pts']
     )
 
-    # Define form plot
+    # Define extra detail points plot if position is filtered
+    # FD (3l4-16l3+36l2-48l1+25l0)/12
     # points_form = base.transform_window(
-    #     l1=f'lag({stat},1)',
-    #     l2=f'lag({stat},2)',
-    #     l3=f'lag({stat},3)',
-    #     l4=f'lag({stat},4)',
-    #     groupby=['name', 'position']
-    # ).transform_aggregate(
-    #     latest='max(round)'
-    # ).transform_filter(
-    #     alt.datum.round == alt.datum.latest
-    # ).transform_calculate(
-    #     form3=f'(datum.l1+datum.l2+{stat}) / (3*mean({stat}))',
-    #     form5=f'(datum.l1+datum.l2+datum.l3+datum.l4+{stat} / (3*mean({stat}))'
-    # ).mark_circle(
-    # ).encode(
-    #     x='form5:Q',
-    #     y='form3:Q'
-    # ).properties(
-    #     width=dims['width-pts']
-    # )
+    #     groupby=['name', 'position'],
+    #     window=[
+    #         alt.WindowFieldDef(op='lag', field=stat, param=1, **{'as': 'l1'}),
+    #         alt.WindowFieldDef(op='lag', field=stat, param=2, **{'as': 'l2'}),
+    #         alt.WindowFieldDef(op='lag', field=stat, param=3, **{'as': 'l3'}),
+    #         alt.WindowFieldDef(op='lag', field=stat, param=4, **{'as': 'l4'})]
+    # ).transform_filter()
 
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
         point=True
     ).transform_window(
-        cuml_stat=f'sum({stat})',
+        cumulative=f'sum({stat})',
         groupby=['name', 'position']
+    ).transform_window(
+        form=f'mean({stat})',
+        groupby=['name', 'position'],
+        sort=[alt.SortField(field='round', order='descending')]
     ).encode(
         x=alt.X(
             shorthand='round:Q',
@@ -130,20 +123,24 @@ def plots(
             scale=alt.Scale(domain=(1, df['round'].max())),
             title='Matchday'),
         y=alt.Y(
-            shorthand=f"{'cuml_stat' if cumulative else stat}:Q",
+            shorthand=f"{stat if aggregate == 'weekly' else aggregate}:Q",
             axis=alt.Axis(format=' .2~s'),
             scale=alt.Scale(domain=(
                 0,
-                (df.groupby('name').sum() if cumulative else df)[stat].max())),
+                (
+                    df.groupby('name').sum()
+                    if aggregate == 'cumulative'
+                    else df
+                )[stat].max())),
             title=' '.join(s.capitalize() for s in stat.split('_'))),
         color=alt.Color(
             shorthand='name:N',
             title='Name'),
         tooltip=[
             alt.Tooltip(
-                shorthand=f"{'cuml_stat' if cumulative else stat}:Q",
+                shorthand=f"{stat if aggregate == 'weekly' else aggregate}:Q",
                 format=' .2~s',
-                title=('Cumulative ' if cumulative else '') + stat_title),
+                title=aggregate.capitalize() + ' ' + stat_title),
             alt.Tooltip(
                 shorthand='minutes',
                 title='Minutes')]

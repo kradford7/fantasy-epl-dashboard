@@ -29,7 +29,7 @@ app = Dash(
 
 server = app.server
 
-# Dashboard Layout  TODO: consider dbc.Col(xs, xm) params for mobile interface
+# Dashboard Layout
 app.layout = dbc.Container(
     children=[
         dcc.Location(id='url'),
@@ -49,9 +49,15 @@ app.layout = dbc.Container(
                                         s.capitalize()
                                         for s in stat.split('_'))
                                 } for stat in stats]),
-                        dbc.Switch(
-                            id='switch-cuml',
-                            label='Cumulative'),
+                        dcc.Dropdown(
+                            id='select-agg',
+                            value='weekly',
+                            clearable=False,
+                            searchable=False,
+                            options=[
+                                {'value': 'weekly', 'label': 'Weekly Values'},
+                                {'value': 'cumulative', 'label': 'Cumulative'},
+                                {'value': 'form', 'label': 'Form'}]),
                         dcc.Dropdown(
                             id='select-pos',
                             searchable=False,
@@ -115,16 +121,16 @@ app.clientside_callback(
     Output('chart', 'srcDoc'),
     Input('viewport-dims', 'modified_timestamp'),
     Input('select-stat', 'value'),
-    Input('switch-cuml', 'value'),
+    Input('select-agg', 'value'),
     Input('select-pos', 'value'),
     State('viewport-dims', 'data')
 )
-def update_chart(_, stat, cuml, pos, dims):
+def update_chart(_, stat, agg, pos, dims):
     return plots(
         df=dat['players-df'],
         dims=dims,
         stat=stat,
-        cumulative=cuml,
+        aggregate=agg,
         pos=pos
     ).to_html()
 
