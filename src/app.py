@@ -1,11 +1,14 @@
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
+import altair as alt
 import dash_bootstrap_components as dbc
 import pickle
 
 from plots import plots
 
+
+alt.data_transformers.disable_max_rows()
 
 # Load data
 try:
