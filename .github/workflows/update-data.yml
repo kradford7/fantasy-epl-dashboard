@@ -33,4 +33,4 @@ jobs:
         git config --local user.name "kradford7"
         git add ./data.pkl
         git commit -m "Automated data update"
-        git push
+        git push || echo "No new data to add"
