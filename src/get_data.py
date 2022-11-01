@@ -118,3 +118,5 @@ dat['players-df'].loc[:, 'round':] = \
 
 # Save data
 with open(DATA_PATH, 'wb') as f: pickle.dump(dat, f)
+    
+print('data saved successfully')
