@@ -52,6 +52,9 @@ app.layout = dbc.Container(
                                         s.capitalize()
                                         for s in stat.split('_'))
                                 } for stat in stats]),
+                        html.P(
+                            children='Stat',
+                            className='text-primary'),
                         dcc.Dropdown(
                             id='select-agg',
                             value='weekly',
@@ -61,15 +64,29 @@ app.layout = dbc.Container(
                                 {'value': 'weekly', 'label': 'Weekly Values'},
                                 {'value': 'cumulative', 'label': 'Cumulative'},
                                 {'value': 'form', 'label': 'Form'}]),
+                        html.P(
+                            children='Bottom Chart Type',
+                            className='text-primary'),
                         dcc.Dropdown(
                             id='select-pos',
                             searchable=False,
-                            placeholder='Filter position...',
+                            placeholder='None',
                             options=[
                                 {
                                     'value': pos['name'],
                                     'label': pos['name']
-                                } for pos in dat['positions'].values()])],
+                                } for pos in dat['positions'].values()]),
+                        html.P(
+                            children='Position Focus',
+                            className='text-primary'),
+                        html.Hr(
+                            className='text-primary'),
+                        html.P(
+                            children='''
+                                Click on a player in the top charts to view that
+                                player's stats by matchday in the bottom chart.
+                                Hold shift to select multiple players.''',
+                            className='text-primary')],
                     id='sidebar',
                     class_name='bg-info',
                     style={
@@ -139,4 +156,4 @@ def update_chart(_, stat, agg, pos, dims):
 
 
 # Run app
-if __name__ == '__main__': app.run_server(debug=True)
+if __name__ == '__main__': app.run()

@@ -92,19 +92,8 @@ def plots(
                 shorthand='latest[cost]:Q',
                 title='Cost')]
     ).properties(
-        width=dims['width-pts']
+        width=dims['width-pts' if pos is None else 'width-lns']
     )
-
-    # Define extra detail points plot if position is filtered
-    # FD (3l4-16l3+36l2-48l1+25l0)/12
-    # points_form = base.transform_window(
-    #     groupby=['name', 'position'],
-    #     window=[
-    #         alt.WindowFieldDef(op='lag', field=stat, param=1, **{'as': 'l1'}),
-    #         alt.WindowFieldDef(op='lag', field=stat, param=2, **{'as': 'l2'}),
-    #         alt.WindowFieldDef(op='lag', field=stat, param=3, **{'as': 'l3'}),
-    #         alt.WindowFieldDef(op='lag', field=stat, param=4, **{'as': 'l4'})]
-    # ).transform_filter()
 
     # Define lines plot [stat vs round for selected players]
     lines = base.mark_line(
