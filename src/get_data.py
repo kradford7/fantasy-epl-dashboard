@@ -120,6 +120,8 @@ def get_data() -> dict:
     dat['players-df'].loc[:, 'round':] = \
         dat['players-df'].loc[:, 'round':].astype('int64')
 
+    return dat
+
 
 if __name__ == '__main__':
     with open(DATA_PATH, 'wb') as f:
