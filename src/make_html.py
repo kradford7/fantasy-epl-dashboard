@@ -1,4 +1,5 @@
 import altair as alt
+import json
 
 from bs4 import BeautifulSoup
 from dash_bootstrap_components.themes import SLATE
@@ -10,7 +11,11 @@ from get_data import get_data
 alt.data_transformers.disable_max_rows()
 
 # Get data
-df = get_data()['players-df']
+if True: # if debugging
+    import pickle
+    with open('./data.pkl', 'rb') as f: df = pickle.load(f)['players-df']
+else:
+    df = get_data()['players-df']
 
 # Define the base upon which to build plots
 selector = alt.selection_multi(empty='none', fields=['name', 'position'])
@@ -102,8 +107,8 @@ lines = base.mark_line(
     selector
 )
 
-# Concatenate charts and publish to HTML
-html = alt.vconcat(
+# Concatenate charts
+charts = alt.vconcat(
     points,
     lines
 ).configure(
@@ -120,34 +125,71 @@ html = alt.vconcat(
     labelColor='lightgrey',
     titleColor='lightgrey',
     orient='top-right'
-).to_html()
+)
 
-
-# Edit HTML
-soup = BeautifulSoup(html, 'html.parser')
+# Get chart HTML and edit
+soup = BeautifulSoup(charts.to_html(), 'html.parser')
 
 ## add page title
-title = soup.new_tag('title')
-title.string = 'Fantasy EPL Dashboard'
-soup.html.head.append(title)
+soup.html.head.append(soup.new_tag('title'))
+soup.html.head.title.string = 'Fantasy EPL Dashboard'
 
 ## add CSS
-css = soup.new_tag('link', rel='stylesheet', href=SLATE)
-soup.html.head.append(css)
+soup.html.head.append(soup.new_tag('link', rel='stylesheet', href=SLATE))
 
-## edit chart dimensions to be adaptive
-js = soup.html.body.script.string
-i = js.find('"mark": "circle"')
-js = (
-    js[:i]
-    + '"width": 0.215*window.innerWidth, "height": 0.4*window.innerHeight, '
-    + js[i:])
+## edit chart javascript
+js = json.loads(charts.to_json())
+js_tag = lambda s: f'JS_TAG{"{"}{s}{"}"}JS_TAG'
+st_tag = lambda s: f'ST_TAG{"{"}{s}{"}"}ST_TAG'
 
-i = js.find('"mark": {')
-soup.html.body.script.string = (
-    js[:i]
-    + '"width": 0.9*window.innerWidth, "height": 0.4*window.innerHeight, '
-    + js[i:])
+### edit chart dimensions to be adaptive
+js['vconcat'][0]['width'] = js_tag('0.215*window.innerWidth')
+js['vconcat'][0]['height'] = js_tag('0.37*window.innerHeight')
+js['vconcat'][1]['width'] = js_tag('0.9*window.innerWidth')
+js['vconcat'][1]['height'] = js_tag('0.37*window.innerHeight')
+
+### add something
+js['vconcat'][1]['encoding']['y']['field'] = \
+    js_tag(f'document.getElementById({st_tag("lns-type")}).value')
+
+### convert json to string and remove tags
+js = json.dumps(
+    js
+).replace(
+    '"JS_TAG{',
+    ''
+).replace(
+    '}JS_TAG"',
+    ''
+).replace(
+    'ST_TAG{',
+    '"'
+).replace(
+    '}ST_TAG',
+    '"'
+)
+
+### overwrite javascript in html and move to head
+i = soup.html.body.script.string.find('{"config')
+j = soup.html.body.script.string.find(';')
+soup.html.head.append(soup.new_tag('script'))
+soup.html.head.find_all('script')[-1].string = (
+    'function get_chart() {'
+    + soup.html.body.script.string[:i]
+    + js
+    + soup.html.body.script.string[j:]
+    + '};')
+soup.html.body.script.decompose()
+
+## add dropdown menu and script to update chart
+soup.html.body['onload'] = 'get_chart()'
+soup.html.body.append(
+    soup.new_tag('select', id='lns-type', onchange='get_chart()'))
+for v, s in {
+    'total_points': 'Weekly', 'cumulative': 'Cumulative', 'form': 'Form'
+}.items():
+    soup.html.body.find('select').append(soup.new_tag('option', value=v))
+    soup.html.body.find('select').find_all('option')[-1].string = s
 
 # Write HTML to file
 with open('index.html', 'w', encoding='utf-8') as f:
