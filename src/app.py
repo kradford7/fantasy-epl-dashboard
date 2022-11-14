@@ -83,9 +83,10 @@ app.layout = dbc.Container(
                             className='text-primary'),
                         html.P(
                             children='''
-                                Click on a player in the top charts to view that
-                                player's stats by matchday in the bottom chart.
-                                Hold shift to select multiple players.''',
+                                Click on a player in the top charts to view
+                                that player's stats by matchday in the bottom
+                                chart. Hold shift to select multiple players.
+                                ''',
                             className='text-primary')],
                     id='sidebar',
                     class_name='bg-info',

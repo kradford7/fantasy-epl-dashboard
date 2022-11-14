@@ -4,7 +4,7 @@ import pandas as pd
 
 def plots(
     df:pd.DataFrame,
-    dims:dict,
+    dims:dict={'height': 500, 'width-pts': 500, 'width-lns': 500}, # TODO: remove
     stat:str='total_points',
     aggregate:str='weekly',
     pos:str=None
@@ -16,8 +16,8 @@ def plots(
     ----------
     df : pandas.DataFrame
         players-df DataFrame from data.pkl
-    dims : dict
-        plot dimensions. must contain keys 'height' and 'width'
+    dims : dict, optional
+        plot dimensions. must contain keys 'height', 'width-pts' & 'width-lns'
     stat : str, optional
         a key in dat[player_id][matches] to visualise. Default 'total_points'
     aggregate : str, optional
