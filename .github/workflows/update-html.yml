@@ -1,0 +1,36 @@
+# This runs ~/src/make_html.py daily
+
+name: Update HTML
+
+on:
+  schedule:
+  - cron: '0 0 */1 * *' # runs daily at midnight (UTC)
+  workflow_dispatch:
+
+jobs:
+  update_data:
+    name: Update HTML file
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+        
+    - name: Install Dependencies
+      run: pip install requests pandas beautifulsoup4 altair dash-bootstrap-components
+      
+    - name: Run script
+      run: python ./src/make_html.py
+      
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "kradford7@users.noreply.github.com"
+        git config --local user.name "kradford7"
+        git add ./index.html
+        git commit -m "Automated HTML update"
+        git push
