@@ -11,7 +11,7 @@ from get_data import get_data
 alt.data_transformers.disable_max_rows()
 
 # Get data
-if True: # if debugging
+if False: # if debugging
     import pickle
     with open('./data.pkl', 'rb') as f: df = pickle.load(f)['players-df']
 else:
@@ -148,9 +148,16 @@ js['vconcat'][0]['height'] = js_tag('0.37*window.innerHeight')
 js['vconcat'][1]['width'] = js_tag('0.9*window.innerWidth')
 js['vconcat'][1]['height'] = js_tag('0.37*window.innerHeight')
 
-### add something
+### get lines y field from dropdown
 js['vconcat'][1]['encoding']['y']['field'] = \
     js_tag(f'document.getElementById({st_tag("lns-type")}).value')
+js['vconcat'][1]['encoding']['y']['scale']['domain'] = [
+    0,
+    js_tag(f'((document.getElementById({st_tag("lns-type")}).value == '
+        f'{st_tag("cumulative")}) ? '
+        f'{df.groupby("name").sum()["total_points"].max()} : '
+        f'{df["total_points"].max()})')
+]
 
 ### convert json to string and remove tags
 js = json.dumps(
